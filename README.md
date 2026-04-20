@@ -20,6 +20,3 @@ A simple web-based sorting visualizer that demonstrates how different sorting al
 
 ## How to Run
 Open `index.html` in a browser
-
-## Live Demo
-https://tarunrajeshh.github.io/Sorting-visualizer/
