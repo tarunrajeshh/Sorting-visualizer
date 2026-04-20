@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Linked List Sorting Visualizer</title>
+<style>
+body {
+    background:#0f172a;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+}
+.controls {
+    margin:15px;
+}
+button, select {
+    padding:8px 12px;
+    margin:6px;
+}
+#bars {
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    height:300px;
+    border:1px solid #334155;
+    margin:20px auto;
+    width:90%;
+}
+.bar {
+    background:#38bdf8;
+    margin:1px;
+}
+button:disabled {
+    opacity:0.5;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Linked List Sorting Visualizer</h2>
+
+<div class="controls">
+Bars:
+<select id="size">
+  <option value="10">10</option>
+  <option value="25">25</option>
+  <option value="50">50</option>
+  <option value="100">100</option>
+</select>
+
+Algorithm:
+<select id="algo" onchange="cancelSort()">
+  <option value="bubble">Bubble Sort</option>
+  <option value="insertion">Insertion Sort</option>
+  <option value="quick">Quick Sort</option>
+  <option value="radix">Radix Sort</option>
+</select>
+
+<button id="genBtn" onclick="generate()">Generate</button>
+<button id="sortBtn" onclick="sort()">Sort</button>
+</div>
+
+<div id="bars"></div>
+
+<script>
+// ================= STATE =================
+let isSorting = false;
+let runId = 0;
+const SPEED = 30;
+
+// ================= LINKED LIST =================
+class Node {
+    constructor(data) {
+        this.data = data;
+        this.next = null;
+    }
+}
+
+let head = null;
+let SIZE = 10;
+
+// ================= GENERATE =================
+function generate() {
+    if (isSorting) return;
+    SIZE = parseInt(document.getElementById("size").value);
+    head = null;
+
+    for (let i = 0; i < SIZE; i++) {
+        let node = new Node(Math.floor(Math.random() * 200) + 20);
+        node.next = head;
+        head = node;
+    }
+    draw();
+    
+}
+
+// ================= CANCEL SORT =================
+function cancelSort() { 
+    runId++;              // invalidate running sort
+    isSorting = false;
+    document.getElementById("genBtn").disabled = false;
+    document.getElementById("sortBtn").disabled = false;
+}
+// ================= HELPERS =================
+function listToArray() {
+    let arr = [];
+    let t = head;
+    while (t) {
+        arr.push(t.data);
+        t = t.next;
+    }
+    return arr;
+}
+
+function arrayToList(arr) {
+    let t = head;
+    for (let v of arr) {
+        t.data = v;
+        t = t.next;
+    }
+}
+
+function draw(color="#38bdf8") {
+    const box = document.getElementById("bars");
+    box.innerHTML = "";
+    const w = Math.max(2, box.clientWidth / SIZE - 2);
+
+    let t = head;
+    while (t) {
+        let b = document.createElement("div");
+        b.className = "bar";
+        b.style.height = t.data + "px";
+        b.style.width = w + "px";
+        b.style.background = color;
+        box.appendChild(b);
+        t = t.next;
+    }
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+// ================= SORTS =================
+async function bubbleSort(arr, localRunId) {
+    for (let i = 0; i < arr.length; i++) {
+        for (let j = 0; j < arr.length - i - 1; j++) {
+            if (localRunId !== runId) return;
+            if (arr[j] > arr[j + 1]) {
+                [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+                arrayToList(arr);
+                draw("#facc15");
+                await sleep(SPEED);
+            }
+        }
+    }
+}
+
+async function insertionSort(arr, localRunId) {
+    for (let i = 1; i < arr.length; i++) {
+        let key = arr[i];
+        let j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+            if (localRunId !== runId) return;
+            arr[j + 1] = arr[j];
+            j--;
+            arrayToList(arr);
+            draw("#a78bfa");
+            await sleep(SPEED);
+        }
+        arr[j + 1] = key;
+        arrayToList(arr);
+        await sleep(SPEED);
+    }
+}
+
+async function quickSort(arr, localRunId) {
+    async function qs(l, r) {
+        if (l >= r || localRunId !== runId) return;
+        let pivot = arr[r];
+        let i = l;
+        for (let j = l; j < r; j++) {
+            if (localRunId !== runId) return;
+            if (arr[j] < pivot) {
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+                arrayToList(arr);
+                draw("#4ade80");
+                await sleep(SPEED);
+                i++;
+            }
+        }
+        [arr[i], arr[r]] = [arr[r], arr[i]];
+        arrayToList(arr);
+        await sleep(SPEED);
+        await qs(l, i - 1);
+        await qs(i + 1, r);
+    }
+    await qs(0, arr.length - 1);
+}
+
+async function radixSort(arr, localRunId) {
+    let max = Math.max(...arr);
+    for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10) {
+        if (localRunId !== runId) return;
+        let buckets = Array.from({ length: 10 }, () => []);
+        for (let v of arr) {
+            buckets[Math.floor(v / exp) % 10].push(v);
+            if (localRunId !== runId) return;
+            arrayToList(arr);
+            draw("#fb7185");
+            await sleep(SPEED);
+        }
+        arr = [].concat(...buckets);
+    }
+    arrayToList(arr);
+    draw("#fb7185");
+}
+
+// ================= CONTROLLER =================
+async function sort() {
+    if (isSorting) return;
+    isSorting = true;
+    runId++;
+    const localRunId = runId;
+
+    document.getElementById("genBtn").disabled = true;
+    document.getElementById("sortBtn").disabled = true;
+
+    let arr = listToArray();
+    let algo = document.getElementById("algo").value;
+
+    if (algo === "bubble") await bubbleSort(arr, localRunId);
+    if (algo === "insertion") await insertionSort(arr, localRunId);
+    if (algo === "quick") await quickSort(arr, localRunId);
+    if (algo === "radix") await radixSort(arr, localRunId);
+
+    if (localRunId === runId) {
+        isSorting = false;
+        document.getElementById("genBtn").disabled = false;
+        document.getElementById("sortBtn").disabled = false;
+    }
+}
+
+generate();
+</script>
+
+</body>
+</html>
